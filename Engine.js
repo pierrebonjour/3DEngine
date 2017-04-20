@@ -1,118 +1,104 @@
-//Put the resize function somewhere else !
-//RÃ©fÃ©chir Ã  la possibilitÃ© de choisir la classe (sphere/cube/...) que j'appelle avec la mÃªme fonction rotate...
 class Engine {
-    constructor(log) {
-        this.log = log;
-        this.loaded = false;
-        if(this.log) console.log("logs activated");
-        this._EngineLoader = new EngineLoader(this);
-		this._EngineLoader.shoot();
-    }
-
-	anyFunction() {
-
+	Camera(x,y,z){
+		return Engine._sceneAndCam.Camera(this,x,y,z);
 	}
-    
-}
 
 
+	basicSampleScene(){
+		var thisE = this;
+		Engine._sceneAndCam.basicSampleScene(thisE);
+		return this;
+	}
 
-class EngineLoader{
-    constructor(parent){
-        this.parent = parent;
-        this.remainsToBeLoaded = [];
-        //load what will be needed
-        var thisEL = this;
-        var waitForBabylon = new Object();
-		this.remainsToBeLoaded.push(function(){thisEL.armScript("babylon.js",waitForBabylon);});
-		this.remainsToBeLoaded.push(waitForBabylon);
-        var waitForBody = new Object();
-        this.remainsToBeLoaded.push(function(){thisEL.armBody(waitForBody);});
-        this.remainsToBeLoaded.push(waitForBody);
-        this.remainsToBeLoaded.push(function(){thisEL.replaceBody();});
-        var waitForSceneAndCam = new Object();
-        this.remainsToBeLoaded.push(function(){thisEL.armScript("SceneAndCam.js",waitForSceneAndCam);});
-        this.remainsToBeLoaded.push(waitForSceneAndCam);
-        this.remainsToBeLoaded.push(function(){if(thisEL.parent.log) console.log("scripts loading complete");});
-        this.remainsToBeLoaded.push(function(){thisEL.parent._SceneAndCam = new SceneAndCam(parent);});
-        //Here we need to leave the function for the changes to take place
-        this.remainsToBeLoaded.push("reload");
-        this.remainsToBeLoaded.push(function(){if(thisEL.parent.log) console.log("private classes loading complete");});
-        //this.remainsToBeLoaded.push(function(){thisEL.parent._SceneAndCam.basicSampleScene("from EL");});
-        //this.remainsToBeLoaded.push(function(){thisEL.addResizeEvents();});
+	render(){
+		var thisE = this;
+		Engine._sceneAndCam.render(thisE);
+	}
+	
+    constructor(startFunction,log){
+    	Engine._startFunction = startFunction;
+        Engine.log = log;
+		this.BABYLON = class{}
+        Engine._loaded = false;
+        Engine._remainsToBeLoaded = [];
+        Engine._toBeExecutedOnceEngineIsLoaded = [];
+        if(Engine.log) console.log("Engine.js : logs activated");
+
+        var waitForScriptLoader = new Object();
+		Engine._remainsToBeLoaded.push(function(){Engine._armScript("Engine/loader.js",waitForScriptLoader);});
+		Engine._remainsToBeLoaded.push(waitForScriptLoader);
+		var thisE = this;
+		Engine._remainsToBeLoaded.push(function(){Engine._loader.main(thisE);});
+		//reload is necessary to leave the shoot function to modify the real Engine
+		//(the Engine is a just copy of the engine inside the shoot function)
+		//_scriptLoader will add on the real array, but not on the copy that shoot() has
+		//_scriptLoader will add at the complete end of the real array, after reload
+		Engine._remainsToBeLoaded.push("reload");
+		Engine._shoot();
     }
 
-    executeOrStack(func)
-    {
-    	if (this.parent.loaded) func();
-    	else {
-    		this.remainsToBeLoaded.push(func);
-    		this.shoot();
-    	}
-    }
-
-    armBody(ref){
-    	var thisEL = this;
-        window.onload = function(){ref.loaded = true;thisEL.shoot();};
-        //maybe the document has already loaded, in which case there wont be any trigger
-        if (document.readyState === "complete") ref.loaded = true;
-    }
-
-    replaceBody(){
-        var documentBody = document.createElement("body");
-        documentBody.style.margin = 0;
-        this.parent.canvas = document.createElement("canvas");
-        this.parent.canvas.width = window.innerWidth;
-        this.parent.canvas.height = window.innerHeight;
-        documentBody.appendChild(this.parent.canvas);
-        document.body = documentBody;
-    }
-
-    addResizeEvents() {
-        var thisEL = this;
-        window.onresize = function() {thisEL.resizeCanvasAndContent();};
-    }
-
-    armScript(src,ref){
-    	var thisEL = this;
-    	var script = document.createElement('script');
-    	script.onload = function(){ref.loaded = true;thisEL.shoot();};
-		script.src = src;
-		document.head.appendChild(script);
-    }
-
-    resizeCanvasAndContent() {
-
-    }
-
-    shoot() {
+    static _shoot(){
         //go through all the array
-        //if it is a funcion : execute and delete
+        //if it is a function : execute and delete
         //if it is an object and object.loaded then delete
         //else return
-        var initialSize = this.remainsToBeLoaded.length;
-        for (;initialSize>0;initialSize--)
-        {
+        var initialSize = Engine._remainsToBeLoaded.length;
+        for (;initialSize>0;initialSize--){
         	//console.log(initialSize); //for debug
-            var e = this.remainsToBeLoaded[0];
-            if(typeof(e) === 'function')
-            {
-                (this.remainsToBeLoaded.shift())(); //delete the function from the array and execute it;
+            var e = Engine._remainsToBeLoaded[0];
+            if(typeof(e) === 'function'){
+                (Engine._remainsToBeLoaded.shift())(); //delete the function from the array and execute it;
             }
-            else if (e.loaded) this.remainsToBeLoaded.shift();
-            else if (e=="reload") //reload enables changes made on the local copy to be applied to the objects
+            else if (e.loaded) Engine._remainsToBeLoaded.shift();
+       		else if (e=="reload") //reload enables changes made on the local copy to be applied to the objects
             {
-            	this.remainsToBeLoaded.shift();
-            	var thisEL = this;
-            	setTimeout(function(){thisEL.shoot();},0);
+            	Engine._remainsToBeLoaded.shift();
+            	
+            	setTimeout(function(){Engine._shoot();},0);
             	return;
             }
             else return;
-        }
-	//here our scene is loaded (because we are single threaded)
-	if (this.parent.log) if(!this.parent.loaded)console.log("Engine stack loading complete");
-	this.parent.loaded = true;
+		}
+		//here our scene is loaded (because we are single threaded)
+		if (Engine.log) if(!Engine._loaded)console.log("Engine.js : Engine inner stack loading complete");
+		Engine._loaded = true;
+		//Now we stack all functions in the _toBeExecutedOnceEngineIsLoaded array
+		var toBeExecutedSize = Engine._toBeExecutedOnceEngineIsLoaded.length;
+		if(toBeExecutedSize>0)
+		{
+			for (;toBeExecutedSize>0;toBeExecutedSize--){
+				//console.log(toBeExecutedSize); //for debug
+				Engine._remainsToBeLoaded.push(Engine._toBeExecutedOnceEngineIsLoaded.shift());
+			}
+			if (Engine.log) console.log("Engine.js : Engine external stack loading complete");
+			setTimeout(function(){Engine._shoot();},0);
+			return;
+		}
+		if (!Engine._startFunctionAlreadyExecuted)
+		{
+			setTimeout(Engine._startFunction,0);
+			Engine._startFunctionAlreadyExecuted = true;
+		}
     }
 
+	ExecuteOrStack(obj){
+		if (Engine._loaded){
+			Engine._remainsToBeLoaded.push(obj);
+			Engine._shoot();
+		} else{
+			Engine._toBeExecutedOnceEngineIsLoaded.push(obj);
+			console.log("Stack for after Engine load : "+obj);
+		}
+		
+    	
+    }
+
+    static _armScript(src,ref){
+    	if (Engine.log) console.log("Engine.js : loading script "+ src);
+    	var script = document.createElement('script');
+    	script.onload = function(){ref.loaded = true;Engine._shoot();};
+		script.src = src;
+		document.head.appendChild(script);
+    }
 
 }

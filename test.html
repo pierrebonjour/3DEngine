@@ -1,9 +1,21 @@
 <script src="Engine.js"></script>
 <script>
-//setInterval(function(){console.log("test");},0);
-toto = new Engine(true);
-//setInterval(function(){console.log(toto.loaded);},0);
-toto.anyFunction();
+
+toto = new Engine(titi, true);
+
+function titi()
+{
+    console.log("TITITITIITITITI !!!!!!");
+    //setInterval(function(){console.log("test");},0);
+
+    cam = toto.Camera(0,10,10);
+
+    setInterval(function(){cam.render();},0);
+    tata = toto.basicSampleScene();
+    
+}
+
+
 
 
 
